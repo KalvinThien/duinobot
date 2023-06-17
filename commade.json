@@ -1,0 +1,83 @@
+{
+  "intents": [
+    {
+      "intent": "tellJoke",
+      "commande": [
+        "tell me a joke",
+        "joke"
+      ],
+      "answer": "Sure, here's a joke for you: Why don't scientists trust atoms? Because they make up everything!"
+    },
+    {
+      "intent": "getWeatherLocal",
+      "commande": [
+        "what's the weather today? local",
+        "weather local"
+      ],
+      "answer": "The weather today is sunny with a temperature of 25°C and 50% humidity."
+    },
+    {
+      "intent": "playMusic",
+      "commande": [
+        "play music"
+      ],
+      "answer": "Sure, let's play some music!"
+    },
+    {
+      "intent": "addOwner",
+      "commande": [
+        "add owner"
+      ],
+      "answer": "An owner has been added successfully."
+    },
+    {
+      "intent": "removeOwner",
+      "commande": [
+        "remove owner"
+      ],
+      "answer": "The owner has been removed successfully."
+    },
+    {
+      "intent": "changeManagerName",
+      "commande": [
+        "change manager name"
+      ],
+      "answer": "The manager name has been changed."
+    },
+    {
+      "intent": "changeAdminPin",
+      "commande": [
+        "change admin pin"
+      ],
+      "answer": "The admin pin has been updated."
+    },
+    {
+      "intent": "turnOff",
+      "commande": [
+        "turn off"
+      ],
+      "answer": "The system has been turned off."
+    },
+    {
+      "intent": "searchGoogle",
+      "commande": [
+        "google search"
+      ],
+      "answer": "Performing a Google search..."
+    },
+    {
+      "intent": "offlineAssistantInfo",
+      "commande": [
+        "who are you?",
+        "what can you do?"
+      ],
+      "answer": "I'm at your service, Jalal. How can I assist you today?"
+    }
+  ],
+  "no-response": {
+    "responses": [
+      "I'm sorry, I didn't understand that.",
+      "Could you please repeat?"
+    ]
+  }
+}
