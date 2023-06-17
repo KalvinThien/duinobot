@@ -1,0 +1,103 @@
+{
+  "intents": [
+    {
+      "intent": "greeting",
+      "command": [
+        "hello",
+        "hi",
+        "hey"
+      ],
+      "answer": "Hello! How can I assist you?"
+    },
+    {
+      "intent": "weather",
+      "command": [
+        "what's the weather like?",
+        "tell me the weather forecast",
+        "is it going to rain today?"
+      ],
+      "answer": "The weather today is sunny with a temperature of 25°C."
+    },
+    {
+      "intent": "joke",
+      "command": [
+        "tell me a joke",
+        "give me a funny joke",
+        "I need a laugh"
+      ],
+      "answer": "Why don't scientists trust atoms? Because they make up everything!"
+    },
+    {
+      "intent": "playMusic",
+      "command": [
+        "play music",
+        "start playing a song",
+        "put on some music"
+      ],
+      "answer": "Now playing your favorite tunes!"
+    },
+    {
+      "intent": "addOwner",
+      "command": [
+        "add owner",
+        "register new owner",
+        "create new account"
+      ],
+      "answer": "New owner added successfully!"
+    },
+    {
+      "intent": "removeOwner",
+      "command": [
+        "remove owner",
+        "delete owner",
+        "remove account"
+      ],
+      "answer": "Owner removed successfully!"
+    },
+    {
+      "intent": "changeManagerName",
+      "command": [
+        "change manager name",
+        "update manager name",
+        "modify manager name"
+      ],
+      "answer": "Manager name updated successfully!"
+    },
+    {
+      "intent": "changeAdminPin",
+      "command": [
+        "change admin pin",
+        "update admin pin",
+        "modify admin pin"
+      ],
+      "answer": "Admin PIN changed successfully!"
+    },
+    {
+      "intent": "turnOff",
+      "command": [
+        "turn off",
+        "shutdown",
+        "power off"
+      ],
+      "answer": "Shutting down. Goodbye!"
+    },
+    {
+      "intent": "googleSearch",
+      "command": [
+        "google search",
+        "search on Google",
+        "look up information"
+      ],
+      "answer": "Here are the search results for your query."
+    },
+    {
+      "intent": "aboutAssistant",
+      "command": [
+        "who are you?",
+        "what can you do?",
+        "tell me about yourself"
+      ],
+      "answer": "I'm Offline Assistant, provided by MR.Duino and his Team. Here are some of my features:\n- Provide weather information\n- Fetch current time\n- Answer questions using OpenAI\n- Play music on Spotify"
+    }
+  ]
+}
