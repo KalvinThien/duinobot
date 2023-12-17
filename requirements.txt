@@ -1,4 +1,4 @@
 reportlab
 google-generativeai==0.3.1
-fpdf
+fpdf==1.86
 
