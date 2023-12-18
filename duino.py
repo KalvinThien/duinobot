@@ -1,9 +1,8 @@
 import streamlit as st
-from reportlab.pdfgen import canvas
-from io import BytesIO
 import google.generativeai as genai
 from fpdf import FPDF
-import base64
+from pdfminer.high_level import extract_text
+
 # Hardcoded API key (replace "YOUR_API_KEY" with your actual API key)
 api_key = "AIzaSyD6pimrC1BlP1rbcE6smbIYfvdP2LvbBBY"
 
@@ -11,11 +10,11 @@ api_key = "AIzaSyD6pimrC1BlP1rbcE6smbIYfvdP2LvbBBY"
 st.set_page_config(page_title="Generative Chatbot", layout="wide", initial_sidebar_state="collapsed")
 
 # Streamlit app title and sidebar
-st.title("🫡Welcome To DuinoBot🤖")
+st.title("🤖 Welcome To DuinoBot 🤖")
 
 # Navigation bar
 def navigation():
-    return st.sidebar.radio("Navigation", ["Chat", "Image Chat", "Settings"])
+    return st.sidebar.radio("Navigation", ["Chat", "PDF Chat", "Image Chat", "Settings"])
 
 # Set up the model configuration
 def configure_model():
@@ -52,7 +51,7 @@ def configure_image_model():
 # Collect dynamic prompt parts from the user
 def collect_user_input(prompt_input_key, generation_config, chat_history, nav_choice, conversation_config):
     while True:
-        user_input = st.text_input("You:", key=prompt_input_key)
+        user_input = st.text_input("You:", key=f"user_input_{prompt_input_key}")
         st.text(f"user: {user_input}")
 
         if not user_input:
@@ -75,7 +74,128 @@ def collect_user_input(prompt_input_key, generation_config, chat_history, nav_ch
 
     return chat_history
 
-# Process image and generate content
+# Function to read from a log file
+def read_from_log_file(file_content, generation_config):
+    responses = process_prompts([file_content], generation_config)
+    return responses
+
+def handle_chat_log(generation_config, chat_history):
+    show_chat_log = st.checkbox("Show Chat Log")
+
+    with st.expander("DuinoBot:"):
+        uploaded_file = st.file_uploader("Upload a chat file (txt):", type=["txt"])
+
+        if uploaded_file is not None:
+            uploaded_content = uploaded_file.read().decode("utf-8")
+            st.text("Uploaded Chat:")
+            st.text(uploaded_content)
+            responses = read_from_log_file(uploaded_content, generation_config)
+
+            for response_text in responses:
+                st.text(f"DuinoBot: {response_text}")
+
+            chat_history.extend([(role, message) for role, message in zip(["user"] * len([uploaded_content]),
+                                                                         [uploaded_content])])
+            chat_history.extend([(role, message) for role, message in zip(["AI"] * len(responses), responses)])
+
+        if show_chat_log:
+            for role, message in chat_history:
+                st.text(f"{role}: {message}")
+
+            if st.button("Save Now"):
+                download_content = "\n".join([f"{role}: {message}" for role, message in chat_history])
+                download_filename = "chat_logs.txt"
+                st.download_button(label="Download", data=download_content, file_name=download_filename)
+
+def display_chat_history(prompt_input_key, nav_choice, generation_config, chat_history, conversation_config):
+    if nav_choice == "Chat":
+        show_chat_log = st.checkbox("Show Chat Log")
+
+        with st.expander("DuinoBot:"):
+            if show_chat_log:
+                for role, message in chat_history:
+                    st.text(f"{role}: {message}")
+
+                if st.button("Save Chat Logs"):
+                    download_content = "\n".join([f"{role}: {message}" for role, message in chat_history])
+                    download_filename = "chat_logs.txt"
+                    st.download_button(label="Download Chat Logs", data=download_content, file_name=download_filename)
+
+                    # Export chat logs to PDF when the button is clicked
+                    export_chat_logs_to_pdf(chat_history)
+
+    elif nav_choice == "PDF Chat":
+        pdf_file = st.file_uploader("Upload a PDF file:", type=["pdf"])
+        if pdf_file is not None:
+          pdf_text = extract_text(pdf_file)
+        st.text("PDF Text:")
+        st.text(pdf_text)
+
+        # Text input for user to interact with PDF content
+        pdf_interaction_input = st.text_input("Interact with PDF Content:")
+        st.text(f"user: {pdf_interaction_input}")
+
+        # Include user's input related to PDF content in chat history
+        chat_history.append(("user", pdf_interaction_input))
+        chat_history.append(("user", pdf_text))  # Include PDF text in chat history
+        model_name = "gemini-pro"
+        model = genai.GenerativeModel(
+            model_name=model_name,
+            generation_config=generation_config,
+            safety_settings=safety_settings(),
+        )
+
+        genai.configure(api_key=api_key)
+        response = model.generate_content([history_item[1] for history_item in chat_history])
+        response_text = response.parts[0].text if response.parts else ""
+        chat_history.append(("DuinoBot", response_text))
+        st.text(f"DuinoBot: {response_text}")
+
+    elif nav_choice == "Image Chat":
+        uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg", "gif"])
+        generation_config = configure_image_model()
+
+        # Input field to write a prompt based on the image
+
+        # Default prompt after uploading the image
+        default_prompt = "What do you see in this image?"
+        resized_image_width = 777
+        # Trigger content generation when the user hits Enter
+        image_prompt = st.text_input("Write a prompt based on the image:")
+        # Button to generate content based on the prompt
+        if st.button("Run"):
+            st.text(f"user: {image_prompt}")
+            # Use the provided prompt or the default prompt if none is provided
+            prompt_to_use = image_prompt.strip() if image_prompt else default_prompt
+            # ... existing code for image preparation (resized_image_width)
+
+            st.image(uploaded_file, caption="Uploaded Image.", width=resized_image_width, use_column_width=2048, )
+            # Process image and generate content based on the prompt
+            responses = process_image_upload(uploaded_file, generation_config, prompt_to_use)
+
+            # Display chat history for the current prompt
+            st.subheader("Chat History:")
+            for i, response_text in enumerate(responses):
+                st.text(f"DuinoBot: {response_text}")
+
+                # Add a button to download the chat logs for the current prompt
+                download_content = "\n".join([f"DuinoBot: {response_text}" for response_text in responses])
+                download_filename = f"chat_logs_prompt_{i}.txt"
+                st.download_button(label=f"Save ({i + 1})", data=download_content, file_name=download_filename)
+
+            # Add a button to export chat history to PDF
+            if st.button("Export Chat History to PDF"):
+                export_chat_logs_to_pdf(chat_history)
+
+            # Resize the displayed image with a specific width (adjust as needed)
+            # You can adjust the width based on your preference
+
+            # Display the uploaded image with hover effect
+
+    elif nav_choice == "Settings":
+        st.subheader("Model Settings:")
+        st.write(generation_config)
+
 def process_image_upload(uploaded_file, generation_config, prompt):
     model_name = "gemini-pro-vision"
     model = genai.GenerativeModel(
@@ -108,142 +228,17 @@ def process_image_upload(uploaded_file, generation_config, prompt):
     else:
         return []  # Return an empty list if no file is uploaded
 
-# Function to process and execute prompts
-def process_prompts(prompts, generation_config):
-    responses = []
-    for prompt in prompts:
-        model_name = "gemini-pro"
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            generation_config=generation_config,
-            safety_settings=safety_settings(),
-        )
-
-        genai.configure(api_key=api_key)
-        response = model.generate_content([prompt])
-        response_text = response.parts[0].text if response.parts else ""
-        responses.append(response_text)
-
-    return responses
-
-# Function to read from a log file
-def read_from_log_file(file_content, generation_config):
-    responses = process_prompts([file_content], generation_config)
-    return responses
-
-def handle_chat_log(generation_config, chat_history):
-    show_chat_log = st.checkbox("Show Chat Log")
-
-    with st.expander("DuinoBot:"):
-        uploaded_file = st.file_uploader("Upload a chat file (txt):", type=["txt"])
-
-        if uploaded_file is not None:
-            uploaded_content = uploaded_file.read().decode("utf-8")
-            st.text("Uploaded Chat:")
-            st.text(uploaded_content)
-            responses = read_from_log_file(uploaded_content, generation_config)
-
-            for response_text in responses:
-                st.text(f"DuinoBot: {response_text}")
-
-            chat_history.extend([(role, message) for role, message in zip(["user"] * len([uploaded_content]), [uploaded_content])])
-            chat_history.extend([(role, message) for role, message in zip(["AI"] * len(responses), responses)])
-
-        if show_chat_log:
-            for role, message in chat_history:
-                st.text(f"{role}: {message}")
-
-            if st.button("Download Chat Logs"):
-                download_content = "\n".join([f"{role}: {message}" for role, message in chat_history])
-                download_filename = "chat_logs.txt"
-                st.download_button(label="Download Chat Logs", data=download_content, file_name=download_filename)
-
-# Display chat history
-# Display chat history
-def export_chat_logs_to_pdf(chat_history):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    for role, message in chat_history:
-        pdf.cell(0, 10, f"{role}: {message}", ln=True)
-
-    pdf_output = "chat_logs.pdf"
-    pdf.output(pdf_output)
-
-    st.success(f"Chat logs exported to {pdf_output}")
-# Display chat history
-def display_chat_history(prompt_input_key, nav_choice, generation_config, chat_history, conversation_config):
-    if nav_choice == "Chat":
-        show_chat_log = st.checkbox("Show Chat Log")
-
-        with st.expander("DuinoBot:"):
-            if show_chat_log:
-                for role, message in chat_history:
-                    st.text(f"{role}: {message}")
-
-                if st.button("Save Chat Logs"):
-                    download_content = "\n".join([f"{role}: {message}" for role, message in chat_history])
-                    download_filename = "chat_logs.txt"
-                    st.download_button(label="Download Chat Logs", data=download_content, file_name=download_filename)
-
-                    # Export chat logs to PDF when the button is clicked
-                    export_chat_logs_to_pdf(chat_history)
-
-    elif nav_choice == "Image Chat":
-        uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg", "gif"])
-        generation_config = configure_image_model()
-
-        # Input field to write a prompt based on the image
-        
-        
-        # Default prompt after uploading the image
-        default_prompt = "What do you see in this image?"
-        resized_image_width = 777
-        # Trigger content generation when the user hits Enter
-        image_prompt = st.text_input("Write a prompt based on the image:")
-        # Button to generate content based on the prompt
-        if st.button("Run"):
-            st.text(f"user: {image_prompt}")
-            # Use the provided prompt or the default prompt if none is provided
-            prompt_to_use = image_prompt.strip() if image_prompt else default_prompt
-            # ... existing code for image preparation (resized_image_width)
-
-            st.image(uploaded_file, caption="Uploaded Image.", width=resized_image_width, use_column_width=2048, )
-            # Process image and generate content based on the prompt
-            responses = process_image_upload(uploaded_file, generation_config, prompt_to_use)
-
-            # Display chat history for the current prompt
-            st.subheader("Chat History:")
-            for i, response_text in enumerate(responses):
-                st.text(f"DuinoBot: {response_text}")
-
-                # Add a button to download the chat logs for the current prompt
-                download_content = "\n".join([f"DuinoBot: {response_text}" for response_text in responses])
-                download_filename = f"chat_logs_prompt_{i}.txt"
-                st.download_button(label=f"Save  ({i+1})", data=download_content, file_name=download_filename)
-
-            # Add a button to export chat history to PDF
-            
-
-            # Resize the displayed image with a specific width (adjust as needed)
-            # You can adjust the width based on your preference
-
-            # Display the uploaded image with hover effect
-
-    elif nav_choice == "Settings":
-        st.subheader("Model Settings:")
-        st.write(generation_config)
-        
-
 # Main part of the Streamlit app
 nav_choice = navigation()
 generation_config = configure_model()
 chat_history = []
 
 if nav_choice == "Chat":
-    chat_history = collect_user_input(0, generation_config, chat_history, nav_choice, conversation_config)
+    collect_user_input(0, generation_config, chat_history, nav_choice, conversation_config)
     handle_chat_log(generation_config, chat_history)
+
+elif nav_choice == "PDF Chat":
+    display_chat_history(0, nav_choice, generation_config, chat_history, conversation_config)
 
 elif nav_choice == "Image Chat":
     display_chat_history(0, nav_choice, generation_config, chat_history, conversation_config)
